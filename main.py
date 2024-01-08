@@ -11,6 +11,8 @@ import analytics
 import fitz
 from PIL import Image, ImageTk
 
+# Ein Test
+
 PROJECT_PATH = pathlib.Path(__file__).parent
 PROJECT_UI = PROJECT_PATH / "merger_gui.ui"
 
