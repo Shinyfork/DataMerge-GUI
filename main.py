@@ -9,13 +9,44 @@ import os
 import pandas as pd
 import analytics
 import fitz
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk  
+from tkPDFViewer import tkPDFViewer as pdf
 
-# Ein Test
+
 
 PROJECT_PATH = pathlib.Path(__file__).parent
 PROJECT_UI = PROJECT_PATH / "merger_gui.ui"
 
+
+class EntryPopup(tk.Entry):
+
+    def __init__(self, parent, iid, text, **kw):
+        ''' If relwidth is set, then width is ignored '''
+        super().__init__(parent, **kw)
+        self.tv = parent
+        self.iid = iid
+
+        self.insert(0, text) 
+        # self['state'] = 'readonly'
+        # self['readonlybackground'] = 'white'
+        # self['selectbackground'] = '#1BA1E2'
+        self['exportselection'] = False
+
+        self.focus_force()
+        self.bind("<Return>", self.on_return)
+        self.bind("<Control-a>", self.select_all)
+        self.bind("<Escape>", lambda *ignore: self.destroy())
+
+    def on_return(self, event):
+        self.tv.item(self.iid, values=self.get())
+        self.destroy()
+
+    def select_all(self, *ignore):
+        ''' Set selection on the whole text '''
+        self.selection_range(0, 'end')
+
+        # returns 'break' to interrupt default key-bindings
+        return 'break'
 
 
 class MergerGuiApp:
@@ -44,18 +75,22 @@ class MergerGuiApp:
         self.file3.config(selectmode=tk.MULTIPLE)
         
         
-        self.tview = builder.get_object("editable_threeview")
+        self.tview = builder.get_object("tview")
         self.tview.config(selectmode=tk.BROWSE)
         self.tview["columns"]=("#1",)
         self.tview.column("#1", width=100)
         self.tview.heading('#0', text='Key')
         self.tview.heading('#1', text='Value')
+        self.tview.bind("<Double-1>", self.onDoubleClick)
 
         
         
         
         
         self.canvas = builder.get_object("canvas")
+        
+        
+        
         self.folder_button = builder.get_object("folder_button")
         
         self.delete_button.bind("<Button-1>", self.on_delete_button)
@@ -67,7 +102,44 @@ class MergerGuiApp:
         
         
         self.folder_callback = None
+    
+    
+    def onDoubleClick(self, event):
+        ''' Executed, when a row is double-clicked. Opens 
+        read-only EntryPopup above the item's column, so it is possible
+        to select text '''
+
+        # close previous popups
+        # self.destroyPopups()
+
+        # what row and column was clicked on
+        rowid = self.tview.identify_row(event.y)
+        column = self.tview.identify_column(event.x)
+
         
+        if not rowid:
+            return
+        
+        if not column == '#1':
+            return
+        
+        # get column position info
+        x,y,width,height = self.tview.bbox(rowid, "#1") 
+
+        # y-axis offset
+        # pady = height // 2
+        pady = 0
+
+        # place Entry popup properly         
+        
+        text = self.tview.item(rowid, 'values')
+        self.entryPopup = EntryPopup(self.tview, rowid, text)
+        self.entryPopup.place( x=0, y=y+pady, anchor=tk.W, relwidth=1)
+        return 
+        
+    
+    
+    
         
     def run(self):
         self.mainwindow.mainloop()
@@ -93,7 +165,7 @@ class MergerGuiApp:
                 for file in files:
                     self.list_files.insert(tk.END, file)
                 self.handle_folder_selection(self.folder_path, self.list_files)
-            self.config = configparser.ConfigParser(interpolation=None)
+            self.config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
             self.config.read("config_template.ini")
             sections = self.config.sections()
             for section in sections:
@@ -118,14 +190,11 @@ class MergerGuiApp:
 
 
     def open_pdf(self, dummy=None):
-            self.Canvas.delete("all")
-            doc = fitz.open("plot.pdf")
-            pix = doc.get_page_pixmap(0)
-            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-            tk_image = ImageTk.PhotoImage(img)
-            self.Canvas.create_image(0, 0, anchor="nw", image=tk_image)
-            self._tk_image = tk_image
-
+        pdf_file = self.config["plot"]["plot_filename"] + ".pdf"    
+        self.pdfviewer = pdf.ShowPdf()
+        self.pdfviewerWidget = self.pdfviewer.pdf_view(self.canvas, pdf_location = pdf_file, height=40, width=60)
+        self.pdfviewerWidget.pack()	
+    
     def perform_action(self, dummy=None):
 
 
@@ -144,7 +213,8 @@ class MergerGuiApp:
                         option.replace(section + "_", "", 1)
                         self.config[section][option] = str(value)
         # write treeview to config file
-        with open(self.folder_path + "/config.ini", 'w') as configfile:
+        self.config_filename = filedialog.asksaveasfilename(initialfile = "config.ini",initialdir = self.folder_path,title = "Select file",filetypes = (("ini files","*.ini"),("all files","*.*")))
+        with open(self.config_filename, 'w') as configfile:
             self.config.write(configfile)
 
 
@@ -153,9 +223,10 @@ class MergerGuiApp:
 
     
     def open_config(self, dummy=None):
-        self.folder_path = filedialog.askdirectory()
-        self.config = configparser.ConfigParser(interpolation=None)
-        self.config.read(self.folder_path + "/config.ini")
+        self.config_filename = filedialog.askopenfilename()
+        self.folder_path = os.path.dirname(self.config_filename)
+        self.config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
+        self.config.read(self.config_filename)
         sections = self.config.sections()
         for section in sections:
             self.tview.insert('', 'end', section, text=section)
@@ -180,8 +251,8 @@ class MergerGuiApp:
 
 
     def save_action(self, dummy=None):        
-        analytics.main_analytics(self.folder_path + "/config.ini", self.folder_path)
-        self.open_pdf()
+        analytics.main_analytics(self.config_filename, self.folder_path)
+        #self.open_pdf()
         
 
 

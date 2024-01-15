@@ -15,10 +15,10 @@
           <property name="side">top</property>
         </layout>
         <child>
-          <object class="tk.Canvas" id="canvas" named="True">
+          <object class="ttk.Frame" id="canvas" named="True">
+            <property name="height">400</property>
+            <property name="width">600</property>
             <layout manager="pack">
-              <property name="expand">true</property>
-              <property name="fill">both</property>
               <property name="side">top</property>
             </layout>
           </object>
@@ -186,7 +186,7 @@
           <property name="side">right</property>
         </layout>
         <child>
-          <object class="pygubu.builder.widgets.editabletreeview" id="editable_threeview" named="True">
+          <object class="ttk.Treeview" id="tview" named="True">
             <property name="selectmode">extended</property>
             <layout manager="pack">
               <property name="expand">true</property>
