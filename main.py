@@ -42,13 +42,25 @@ class MergerGuiApp:
         self.file2.config(selectmode=tk.MULTIPLE)
         self.file3 = builder.get_object("listbox_3")#
         self.file3.config(selectmode=tk.MULTIPLE)
+        
+        
         self.tview = builder.get_object("editable_threeview")
+        self.tview.config(selectmode=tk.BROWSE)
+        self.tview["columns"]=("#1",)
+        self.tview.column("#1", width=100)
+        self.tview.heading('#0', text='Key')
+        self.tview.heading('#1', text='Value')
+
+        
+        
+        
+        
         self.canvas = builder.get_object("canvas")
         self.folder_button = builder.get_object("folder_button")
         
         self.delete_button.bind("<Button-1>", self.on_delete_button)
         self.send_button.bind("<Button-1>", self.send_action)
-        self.open_config_button.bind("<Button-1>", self.choose_folder)
+        self.open_config_button.bind("<Button-1>", self.open_config)
         self.go_button.bind("<Button-1>", self.perform_action)
         self.save_button.bind("<Button-1>", self.save_action)
         self.folder_button.bind("<Button-1>", self.choose_folder)
@@ -105,7 +117,7 @@ class MergerGuiApp:
                             self.config[section].pop(option)
 
 
-    def open_pdf(self):
+    def open_pdf(self, dummy=None):
             self.Canvas.delete("all")
             doc = fitz.open("plot.pdf")
             pix = doc.get_page_pixmap(0)
@@ -114,7 +126,7 @@ class MergerGuiApp:
             self.Canvas.create_image(0, 0, anchor="nw", image=tk_image)
             self._tk_image = tk_image
 
-    def perform_action(self):
+    def perform_action(self, dummy=None):
 
 
         #self.config["source"]["heating_csv"] = heating_file
@@ -139,11 +151,35 @@ class MergerGuiApp:
 
 
 
+    
+    def open_config(self, dummy=None):
+        self.folder_path = filedialog.askdirectory()
+        self.config = configparser.ConfigParser(interpolation=None)
+        self.config.read(self.folder_path + "/config.ini")
+        sections = self.config.sections()
+        for section in sections:
+            self.tview.insert('', 'end', section, text=section)
+            options = self.config.options(section)
+            for option in options:
+                try:
+                    self.tview.insert(section, 'end', section+"_"+option, text=option, values=(self.config[section][option]))
+                except Exception as e:
+                    print(e)
+
+        block_list = []
+        for child in self.tview.get_children():
+            if self.tview.parent(child) in block_list:
+                section = self.tview.item(child)['text']
+                for child2 in self.tview.get_children(child):
+
+                    option = self.tview.item(child2)['text']
+                    option.replace(section + "_", "", 1)
+                    if option in self.config[section]:
+                        self.config[section].pop(option)
 
 
 
-
-    def save_action(self):        
+    def save_action(self, dummy=None):        
         analytics.main_analytics(self.folder_path + "/config.ini", self.folder_path)
         self.open_pdf()
         
@@ -206,7 +242,7 @@ class MergerGuiApp:
         if valve_file:
             self.tview.item('source_valve_csv', values=(valve_file))
 
-    def on_delete_button(self):
+    def on_delete_button(self, dummy=None):
         selected_items_file1 = self.file1.curselection()
         selected_items_file2 = self.file2.curselection()
         selected_items_file3 = self.file3.curselection()
