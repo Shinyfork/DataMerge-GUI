@@ -11,7 +11,7 @@ import analytics
 import fitz
 from PIL import Image, ImageTk  
 from tkPDFViewer import tkPDFViewer as pdf
-
+from io import BytesIO
 
 
 PROJECT_PATH = pathlib.Path(__file__).parent
@@ -56,6 +56,10 @@ class MergerGuiApp:
         builder.add_from_file(PROJECT_UI)
         # Main widget
         self.mainwindow = builder.get_object("frame1", master)
+        builder.get_object("frame1").master.geometry("1280x960")	
+        
+        
+        
         builder.connect_callbacks(self)
         self.delete_button = builder.get_object("delete_button")
         self.send_button = builder.get_object("send_button")
@@ -82,7 +86,7 @@ class MergerGuiApp:
         self.tview.heading('#0', text='Key')
         self.tview.heading('#1', text='Value')
         self.tview.bind("<Double-1>", self.onDoubleClick)
-
+        
         
         
         
@@ -157,7 +161,14 @@ class MergerGuiApp:
 
 
     def choose_folder(self, dummy=None):
-
+            #clear file 1,2,3
+            self.file1.delete(0, tk.END)
+            self.file2.delete(0, tk.END)
+            self.file3.delete(0, tk.END)
+            
+            for i in self.tview.get_children():
+                self.tview.delete(i)
+        
             self.folder_path = filedialog.askdirectory()
             if self.folder_path:
                 self.list_files.delete(0, tk.END)
@@ -165,7 +176,9 @@ class MergerGuiApp:
                 for file in files:
                     self.list_files.insert(tk.END, file)
                 self.handle_folder_selection(self.folder_path, self.list_files)
+            self.config = None
             self.config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
+            os.chdir(os.path.dirname(__file__))
             self.config.read("config_template.ini")
             sections = self.config.sections()
             for section in sections:
@@ -187,14 +200,46 @@ class MergerGuiApp:
                         option.replace(section + "_", "", 1)
                         if option in self.config[section]:
                             self.config[section].pop(option)
+            
+            
+            self.config.read('config_template.ini')
+            self.new_value = self.folder_path + "/" + 'plot'
+            self.config.set('plot', 'plot_filename', self.new_value)
+            with open('config_template.ini', 'w') as configfile:
+                self.config.write(configfile)
+            
 
 
     def open_pdf(self, dummy=None):
-        pdf_file = self.config["plot"]["plot_filename"] + ".pdf"    
-        self.pdfviewer = pdf.ShowPdf()
-        self.pdfviewerWidget = self.pdfviewer.pdf_view(self.canvas, pdf_location = pdf_file, height=40, width=60)
-        self.pdfviewerWidget.pack()	
-    
+        pdf_file = self.config["plot"]["plot_filename"] + ".pdf"
+        
+        try:
+            doc = fitz.open(pdf_file)
+            if doc.page_count == 0:
+                # Handle the case where the PDF has no pages.
+                return
+            page = doc.load_page(0)
+            width = page.rect.width
+            height = page.rect.height
+            pix = page.get_pixmap(matrix = fitz.Matrix(2, 2), dpi=150)
+            
+
+            # Use BytesIO to work with the image in memory
+            img_bytes = BytesIO(pix.tobytes())
+            img = Image.open(img_bytes)
+            
+            # Use PIL to convert the image format
+            
+            img = ImageTk.PhotoImage(img)
+            self.canvas.create_image(0, 0,image=img, anchor=tk.NW)
+            self.canvas.image = img   
+            self.canvas.config(width = pix.width, height = pix.height)
+        except Exception as e:
+            # Handle exceptions (e.g., FileNotFoundError, fitz.errors.UnknownException)
+            print(f"Error: {e}")
+        
+        
+            
     def perform_action(self, dummy=None):
 
 
@@ -250,11 +295,12 @@ class MergerGuiApp:
 
 
 
-    def save_action(self, dummy=None):        
+    def save_action(self, dummy=None):     
+        os.chdir(self.folder_path)
         analytics.main_analytics(self.config_filename, self.folder_path)
-        #self.open_pdf()
+        print("Merging done.")
+        self.open_pdf()
         
-
 
 
 
@@ -266,36 +312,39 @@ class MergerGuiApp:
             return
         file_paths = [self.list_files.get(index) for index in selected_files]
 
-        heating_file = None
-        valve_file = None
-        value_file = None
+        heating_files = []
+        valve_files = []
+        value_files = []
 
         for file_path in file_paths:
             if file_path.lower().endswith("_heating.csv"):
-                heating_file = file_path
+                heating_files.append(file_path)
             elif file_path.lower().endswith("_valve.csv"):
-                valve_file = file_path
+                valve_files.append(file_path)
             elif file_path.lower().endswith("_values.csv"):
-                value_file = file_path
+                value_files.append(file_path)
             else:
                 tk.messagebox.showerror("Error", f"Unsupported file: {file_path}")
+                return
 
-        if value_file is None:
+        if len(value_files) == 0:
             tk.messagebox.showerror("Error", "Please select atleast one 'values' file.")
             return
+        
+        value_files, heating_files, valve_files = self.process_files(value_files, heating_files, valve_files)
 
-
-        if heating_file:
+        for heating_file in heating_files:
             #self.file1.delete(0, tk.END)
             self.file1.insert(0, heating_file)
-        if valve_file:
+        for valve_file in valve_files:
             #self.file2.delete(0, tk.END)
             self.file2.insert(0, valve_file)
-        if value_file:
+        for value_file in value_files:
             #self.file3.delete(0, tk.END)
             self.file3.insert(0, value_file)
 
         self.update_filenames()
+        self.process_files(self.file1.get(0, 'end'), self.file2.get(0, 'end'), self.file3.get(0, 'end'))
 
     def update_filenames(self):
         heating_file = ','.join(self.file1.get(0, 'end'))
@@ -312,6 +361,35 @@ class MergerGuiApp:
             self.tview.item('source_heating_csv', values=(heating_file))
         if valve_file:
             self.tview.item('source_valve_csv', values=(valve_file))
+
+    def process_files(self, value_files, heating_files, valve_files):
+        
+        common_base_names = set()
+
+        used_heating_files = []
+        #for heating_file in heating_files:
+        #    base_name_heating = os.path.splitext(heating_file)[0].lower().replace("_heating", "_values")
+        #    if base_name_heating in value_files:
+        #        used_heating_files.append(heating_file)
+        used_heating_files = heating_files
+           
+        used_valve_files = []
+        #for valve_file in valve_files:
+        #    base_name_valve = os.path.splitext(valve_file)[0].lower().replace("_valve", "_values")
+        #    if base_name_valve in value_files:
+        #        used_valve_files.append(valve_file)
+        used_valve_files = valve_files
+        
+        
+        
+        used_value_files = value_files
+
+
+        #if not common_base_names:
+        #    messagebox.showerror("Error", "No matching filenames.")
+        #    return 
+        return used_value_files, used_heating_files, used_valve_files
+
 
     def on_delete_button(self, dummy=None):
         selected_items_file1 = self.file1.curselection()

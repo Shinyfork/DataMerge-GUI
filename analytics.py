@@ -808,35 +808,38 @@ def main_analytics(config_file, data_dir):
     #
     if data_dir is not None:#        
         #prepend data_dir to all elements of valve_csv_files
-        value_csv_files_str = ",".join([data_dir + "/" + x for x in value_csv_files_str.split(",")])
-        valve_csv_files_str = ",".join([data_dir + "/" + x for x in valve_csv_files_str.split(",")])
-        heating_csv_files_str = ",".join([data_dir + "/" + x for x in heating_csv_files_str.split(",")])
+        if value_csv_files_str != "":
+            value_csv_files_str = ",".join([data_dir + "/" + x for x in value_csv_files_str.split(",")])
+        if valve_csv_files_str != "":
+            valve_csv_files_str = ",".join([data_dir + "/" + x for x in valve_csv_files_str.split(",")])
+        if heating_csv_files_str != "":
+            heating_csv_files_str = ",".join([data_dir + "/" + x for x in heating_csv_files_str.split(",")])
 
     # Otherwise, enumerate files
-    if value_csv_files_str == "":
-        for entry in os.scandir(config_source_path):
-            if entry.is_file and entry.name.endswith(config_values_file_pattern):            
-                csv_files.append(str(entry.path))
-        # enumerate files
-        for values_file in csv_files:
-            input_values_file = values_file.replace(config_values_file_pattern, config_values_file_pattern);
-            input_valve_file = values_file.replace(config_values_file_pattern, config_valve_file_pattern);
-            input_heating_file = values_file.replace(config_values_file_pattern, config_heating_file_pattern);
-            if (os.path.exists(input_values_file)):
-                input_values_files.append(input_values_file);
-            else:
-                print("Error: VALUES Source file does not exists: " + input_valve_file);
-                exit(0);
+    # if value_csv_files_str == "":
+    #     for entry in os.scandir(config_source_path):
+    #         if entry.is_file and entry.name.endswith(config_values_file_pattern):            
+    #             csv_files.append(str(entry.path))
+    #     # enumerate files
+    #     for values_file in csv_files:
+    #         input_values_file = values_file.replace(config_values_file_pattern, config_values_file_pattern);
+    #         input_valve_file = values_file.replace(config_values_file_pattern, config_valve_file_pattern);
+    #         input_heating_file = values_file.replace(config_values_file_pattern, config_heating_file_pattern);
+    #         if (os.path.exists(input_values_file)):
+    #             input_values_files.append(input_values_file);
+    #         else:
+    #             print("Error: VALUES Source file does not exists: " + input_valve_file);
+    #             exit(0);
 
-            if (os.path.exists(input_valve_file)):            
-                input_valve_files.append(input_valve_file);
-            else:
-                print("Info: VALVE Source file does not exists: " + input_valve_file);
+    #         if (os.path.exists(input_valve_file)):            
+    #             input_valve_files.append(input_valve_file);
+    #         else:
+    #             print("Info: VALVE Source file does not exists: " + input_valve_file);
 
-            if (os.path.exists(input_heating_file)):
-                input_heating_files.append(input_heating_file);
-            else:
-                print("Info: HEATING Source file does not exists: " + input_valve_file);        
+    #         if (os.path.exists(input_heating_file)):
+    #             input_heating_files.append(input_heating_file);
+    #         else:
+    #             print("Info: HEATING Source file does not exists: " + input_valve_file);        
 
     
     
@@ -1172,7 +1175,7 @@ def write_gnuplot_script(config, rows, header, infos, start_timestamp, end_times
     
     duration_tm = end_timestamp-start_timestamp;
     duration = duration_tm.total_seconds() / (60*60)
-    sysinfostring = str.format("--- Timestamps ----\\nStart {:}\\nEnd   {:}\\nDuration {:.2f} h\\n--- CO_2 supply ---\\nPulse interval\\t{:.0f} s\\nPulse count\\t{:.0f}\\nCO_2 volume\\t{:.2f} L\\nCO_2 mass\\t{:.2f} g\\n\\n--- Heating ---\\nIntervall:\\t\\t{:.2f} min\\nCycle count:\\t{:.0f}", start_timestamp, end_timestamp, duration, co2_interval, co2_cycle_count, co2_total_L, co2_total_g, heating_interval, heating_total_duration, heating_cycle_count)
+    sysinfostring = str.format("--- Timestamps ----\\nStart {:}\\nEnd   {:}\\nDuration {:.2f} h\\n--- CO_2 supply ---\\nPulse interval\\t{:.0f} s\\nPulse count\\t{:.0f}\\nCO_2 volume\\t{:.2f} L\\nCO_2 mass\\t{:.2f} g\\n\\n--- Heating ---\\nIntervall:\\t\\t{:.2f} min\\nDuration:\t\t{:.2f} min\\nCycle count:\\t{:.0f}", start_timestamp, end_timestamp, duration, co2_interval, co2_cycle_count, co2_total_L, co2_total_g, heating_interval, heating_total_duration /60, heating_cycle_count)
     
     with open(scriptfilename, "wt") as scriptfile:                    
 
