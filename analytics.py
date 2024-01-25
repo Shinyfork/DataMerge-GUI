@@ -643,6 +643,7 @@ def insert_volume_flow_column(config, header_in, rows_in, valve_rows_in, start_t
             delta_tm = tm_to - start_tm;
             size_before = len(injectionsinwindow)
             # loop over valve events
+            tm = None
             if (iValveRowFrom < len(valve_rows_in)):
                 
                 
@@ -693,7 +694,9 @@ def insert_volume_flow_column(config, header_in, rows_in, valve_rows_in, start_t
                             tm_str = valve_row[0]
                             tm = datetime.strptime(tm_str, date_fmt)
             # Compute earliest and latest time stamps in window (row_tm - 1 hour : row_tm)
-            window_end_tm = tm;
+            if tm is None:
+                continue
+            window_end_tm = tm
             window_start_tm = window_end_tm - window_td;
             size_during = len(injectionsinwindow)
             injectionsinwindow = [x for x in injectionsinwindow if not is_in_window(window_start_tm, x)]
@@ -912,7 +915,7 @@ def main_analytics(config_file, data_dir):
     end_tm = datetime.strptime(end_time, date_fmt);
 
 
-    
+
     first_row = valve_rows[0];
     #print("VALVE_FIRST_ROW: " + str(first_row))
     last_cycle_time = first_row[0];
@@ -1014,7 +1017,7 @@ def main_analytics(config_file, data_dir):
     hasFirstTime = 0
     lastState = "OFF"
     heating_time_total = 0
-    heating_cycle_count = 1
+    heating_cycle_count = 1    
     for row in heating_rows:
         data_time = row[0]
         state = row[1]
@@ -1239,7 +1242,7 @@ def write_gnuplot_script(config, rows, header, infos, start_timestamp, end_times
         #scriptfile.write(str.format("f(X) = - a*x - b"))
         #scriptfile.write(str.format("fit [1:] f(x) \'{1}\' using ($1*60/1440):($7-0.5.$5) via a"))
         fac = (12.0/44.0) / float(config['resampling'].get('dLtog_vo2', 0.0))
-        scriptfile.write( str.format("set label \"--- CO2 loss estimate ---\\nml/ms: {0} \\nResidue: {1} ml ({2} mg) \\nHourly: {3} ml/h ( {4} mg/h)\" left at screen 0.8, screen 0.55\r\n", float(config['resampling'].get('dV_co2', str(0.215))), float(config['bookkeeping'].get('dCO2VolumeEquivCapacity', str(0))), float(config['bookkeeping'].get('dCO2VolumeEquivCapacity', str(0))) * fac, float(config['bookkeeping'].get('dCO2VolumeLossPerHour', str(0))), float(config['bookkeeping'].get('dCO2VolumeLossPerHour', str(0))) * fac))
+        #scriptfile.write( str.format("set label \"--- CO2 loss estimate ---\\nml/ms: {0} \\nResidue: {1} ml ({2} mg) \\nHourly: {3} ml/h ( {4} mg/h)\" left at screen 0.8, screen 0.55\r\n", float(config['resampling'].get('dV_co2', str(0.215))), float(config['bookkeeping'].get('dCO2VolumeEquivCapacity', str(0))), float(config['bookkeeping'].get('dCO2VolumeEquivCapacity', str(0))) * fac, float(config['bookkeeping'].get('dCO2VolumeLossPerHour', str(0))), float(config['bookkeeping'].get('dCO2VolumeLossPerHour', str(0))) * fac))
     
 
         scriptfile.write(str.format("plot "))    

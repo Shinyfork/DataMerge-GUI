@@ -202,9 +202,9 @@ class MergerGuiApp:
                             self.config[section].pop(option)
             
             
-            self.config.read('config_template.ini')
+            #self.config.read('config_template.ini')
             self.new_value = self.folder_path + "/" + 'plot'
-            self.config.set('plot', 'plot_filename', self.new_value)
+            #self.config.set('plot', 'plot_filename', self.new_value)
             with open('config_template.ini', 'w') as configfile:
                 self.config.write(configfile)
             
