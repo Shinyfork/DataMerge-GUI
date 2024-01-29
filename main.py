@@ -12,8 +12,7 @@ import fitz
 from PIL import Image, ImageTk  
 from tkPDFViewer import tkPDFViewer as pdf
 from io import BytesIO
-from pdf_frame import NewprojectWidget
-
+import ini
 
 PROJECT_PATH = pathlib.Path(__file__).parent
 PROJECT_UI = PROJECT_PATH / "merger_gui.ui"
@@ -159,6 +158,7 @@ class MergerGuiApp:
         files = os.listdir(folder_path)
         for file in files:
             listbox.insert(tk.END, file)
+            
 
 
     def choose_folder(self, dummy=None):
@@ -178,18 +178,23 @@ class MergerGuiApp:
                     self.list_files.insert(tk.END, file)
                 self.handle_folder_selection(self.folder_path, self.list_files)
             self.config = None
-            self.config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
+            config_fp = open("config_template.ini", "r")
+            config_str = config_fp.read()
+            self.config = ini.parse(config_str, on_empty_key="")
             os.chdir(os.path.dirname(__file__))
-            self.config.read("config_template.ini")
-            sections = self.config.sections()
-            for section in sections:
+
+            
+            
+            
+            #sections = self.config.sections()
+            for section in self.config:
                 self.tview.insert('', 'end', section, text=section)
-                options = self.config.options(section)
+                #options = self.config.options(section)
                 
-                for option in options:
+                for option in self.config[section]:
                     try:
-                        vals = self.config[section].get(option)
-                        self.tview.insert(section, 'end', section+"_"+option, text=option, values=(vals))
+                        value = self.config[section][option]
+                        self.tview.insert(section, 'end', section + "_" + option, text=option, values=(value,))
                     except Exception as e:
                         print(e)
 
@@ -202,19 +207,20 @@ class MergerGuiApp:
                         option = self.tview.item(child2)['text']
                         option.replace(section + "_", "", 1)
                         if option in self.config[section]:
-                            self.config[section].pop(option)
+                           del self.config[section][option]
             
             
             #self.config.read('config_template.ini')
             self.new_value = self.folder_path + "/" + 'plot'
             #self.config.set('plot', 'plot_filename', self.new_value)
-            with open('config_template.ini', 'w') as configfile:
-                self.config.write(configfile)
+            with open('config_template.ini', 'w') as new_config_fp:
+                new_config_str = ini.stringify(self.config)
+                new_config_fp.write(new_config_str)
             
 
 
     def open_pdf(self, dummy=None):
-        pdf_file = self.config["plot"].get("plot_filename") + ".pdf"
+        pdf_file = self.config["plot"]["plot_filename"] + ".pdf"
         
         try:
             doc = fitz.open(pdf_file)
@@ -259,11 +265,11 @@ class MergerGuiApp:
                     if len(self.tview.item(child2)['values']) > 0:
                         value = str(self.tview.item(child2)['values'][0])
                         option.replace(section + "_", "", 1)
-                        self.config.set(section, option, str(value)) 
-        # write treeview to config file
+                        self.config[section][option] = str(value)        # write treeview to config file
         self.config_filename = filedialog.asksaveasfilename(initialfile = "config.ini",initialdir = self.folder_path,title = "Select file",filetypes = (("ini files","*.ini"),("all files","*.*")))
-        with open(self.config_filename, 'w') as configfile:
-            self.config.write(configfile)
+        with open(self.config_filename, 'w') as new_config_fp:
+                new_config_str = ini.stringify(self.config)
+                new_config_fp.write(new_config_str)
 
 
 
@@ -273,15 +279,20 @@ class MergerGuiApp:
     def open_config(self, dummy=None):
         self.config_filename = filedialog.askopenfilename()
         self.folder_path = os.path.dirname(self.config_filename)
-        self.config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
-        self.config.read(self.config_filename)
+        
+        config_fp = open("config_template.ini", "r")
+        config_str = config_fp.read()
+
+        self.config = ini.parse(config_str,on_empty_key="")
+        
+
         sections = self.config.sections()
         for section in sections:
             self.tview.insert('', 'end', section, text=section)
             options = self.config.options(section)
             for option in options:
                 try:
-                    self.tview.insert(section, 'end', section+"_"+option, text=option, values=(self.config[section].get(option)))
+                    self.tview.insert(section, 'end', section + "_" + option, text=option, values=(self.config[section].get(option)))
                 except Exception as e:
                     print(e)
 
@@ -294,21 +305,17 @@ class MergerGuiApp:
                     option = self.tview.item(child2)['text']
                     option.replace(section + "_", "", 1)
                     if option in self.config[section]:
-                        self.config[section].pop(option)
+                        del self.config[section][option]
 
 
 
     def save_action(self, dummy=None):     
         os.chdir(self.folder_path)
         analytics.main_analytics(self.config_filename, self.folder_path)
-        print("Merging done.")
+        print("--- Merging done \u2713 ---")
         self.open_pdf()
         # open pdf_frame
-        self.newproject_widget = NewprojectWidget(self.mainwindow)
-        self.newproject_widget.pack(side="top", fill="both", expand=True)
-        self.newproject_widget.open_pdf_frame()
-        self.newproject_widget.pdf_canvas.config(width = 1000, height = 1000)
-        self.newproject_widget.pdf_canvas.pack(side="top", fill="both", expand=True)
+       
        
         
         

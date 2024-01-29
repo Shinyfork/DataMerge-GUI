@@ -80,6 +80,7 @@
             </layout>
             <child>
               <object class="tk.Button" id="folder_button" named="True">
+                <property name="state">normal</property>
                 <property name="text" translatable="yes">choose files</property>
                 <layout manager="pack">
                   <property name="anchor">center</property>
