@@ -12,6 +12,7 @@ import fitz
 from PIL import Image, ImageTk  
 from tkPDFViewer import tkPDFViewer as pdf
 from io import BytesIO
+from pdf_frame import NewprojectWidget
 
 
 PROJECT_PATH = pathlib.Path(__file__).parent
@@ -184,9 +185,11 @@ class MergerGuiApp:
             for section in sections:
                 self.tview.insert('', 'end', section, text=section)
                 options = self.config.options(section)
+                
                 for option in options:
                     try:
-                        self.tview.insert(section, 'end', section+"_"+option, text=option, values=(self.config[section][option]))
+                        vals = self.config[section].get(option)
+                        self.tview.insert(section, 'end', section+"_"+option, text=option, values=(vals))
                     except Exception as e:
                         print(e)
 
@@ -211,7 +214,7 @@ class MergerGuiApp:
 
 
     def open_pdf(self, dummy=None):
-        pdf_file = self.config["plot"]["plot_filename"] + ".pdf"
+        pdf_file = self.config["plot"].get("plot_filename") + ".pdf"
         
         try:
             doc = fitz.open(pdf_file)
@@ -254,9 +257,9 @@ class MergerGuiApp:
                 for child2 in self.tview.get_children(child):
                     option = self.tview.item(child2)['text']
                     if len(self.tview.item(child2)['values']) > 0:
-                        value = self.tview.item(child2)['values'][0]
+                        value = str(self.tview.item(child2)['values'][0])
                         option.replace(section + "_", "", 1)
-                        self.config[section][option] = str(value)
+                        self.config.set(section, option, str(value)) 
         # write treeview to config file
         self.config_filename = filedialog.asksaveasfilename(initialfile = "config.ini",initialdir = self.folder_path,title = "Select file",filetypes = (("ini files","*.ini"),("all files","*.*")))
         with open(self.config_filename, 'w') as configfile:
@@ -278,7 +281,7 @@ class MergerGuiApp:
             options = self.config.options(section)
             for option in options:
                 try:
-                    self.tview.insert(section, 'end', section+"_"+option, text=option, values=(self.config[section][option]))
+                    self.tview.insert(section, 'end', section+"_"+option, text=option, values=(self.config[section].get(option)))
                 except Exception as e:
                     print(e)
 
@@ -300,6 +303,16 @@ class MergerGuiApp:
         analytics.main_analytics(self.config_filename, self.folder_path)
         print("Merging done.")
         self.open_pdf()
+        # open pdf_frame
+        self.newproject_widget = NewprojectWidget(self.mainwindow)
+        self.newproject_widget.pack(side="top", fill="both", expand=True)
+        self.newproject_widget.open_pdf_frame()
+        self.newproject_widget.pdf_canvas.config(width = 1000, height = 1000)
+        self.newproject_widget.pdf_canvas.pack(side="top", fill="both", expand=True)
+       
+        
+        
+        
         
 
 
