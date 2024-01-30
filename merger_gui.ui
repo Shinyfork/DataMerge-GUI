@@ -28,22 +28,15 @@
         <child>
           <object class="ttk.Frame" id="frame8">
             <property name="height">200</property>
+            <property name="takefocus">true</property>
             <property name="width">200</property>
             <layout manager="pack">
+              <property name="anchor">sw</property>
               <property name="side">bottom</property>
             </layout>
             <child>
               <object class="tk.Button" id="merge_button" named="True">
                 <property name="text" translatable="yes">merge</property>
-                <layout manager="pack">
-                  <property name="padx">10</property>
-                  <property name="side">left</property>
-                </layout>
-              </object>
-            </child>
-            <child>
-              <object class="tk.Button" id="open_config_button" named="True">
-                <property name="text" translatable="yes">open config</property>
                 <layout manager="pack">
                   <property name="padx">10</property>
                   <property name="side">left</property>
@@ -63,9 +56,11 @@
         </child>
         <child>
           <object class="tk.Listbox" id="listbox_choose" named="True">
+            <property name="selectmode">extended</property>
             <layout manager="pack">
               <property name="expand">true</property>
               <property name="fill">both</property>
+              <property name="ipadx">50</property>
               <property name="side">left</property>
             </layout>
           </object>
@@ -85,6 +80,16 @@
                 <layout manager="pack">
                   <property name="anchor">center</property>
                   <property name="side">top</property>
+                </layout>
+              </object>
+            </child>
+            <child>
+              <object class="tk.Button" id="open_config_button" named="True">
+                <property name="text" translatable="yes">open config</property>
+                <layout manager="pack">
+                  <property name="padx">20</property>
+                  <property name="pady">25</property>
+                  <property name="side">left</property>
                 </layout>
               </object>
             </child>
@@ -113,6 +118,7 @@
               <object class="tk.Button" id="send_button" named="True">
                 <property name="text" translatable="yes">    --&gt; </property>
                 <layout manager="pack">
+                  <property name="pady">100</property>
                   <property name="side">top</property>
                 </layout>
               </object>
