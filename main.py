@@ -57,7 +57,7 @@ class MergerGuiApp:
         self.mainwindow = builder.get_object("frame1", master)
         builder.get_object("frame1").master.geometry("1280x960")	
         self.mainwindow.winfo_toplevel().title("Data Merger")
-        self.mainwindow.winfo_toplevel().iconbitmap("merger.ico")
+        self.mainwindow.winfo_toplevel().iconbitmap("icon.ico")
         
         builder.connect_callbacks(self)
         self.delete_button = builder.get_object("delete_button")
@@ -97,12 +97,12 @@ class MergerGuiApp:
         
         self.folder_button = builder.get_object("folder_button")
         
-        self.delete_button.bind("<Button-1>", self.on_delete_button)
-        self.send_button.bind("<Button-1>", self.send_action)
-        self.open_config_button.bind("<Button-1>", self.open_config)
-        self.go_button.bind("<Button-1>", self.perform_action)
-        self.save_button.bind("<Button-1>", self.save_action)
-        self.folder_button.bind("<Button-1>", self.choose_folder)
+        self.delete_button.bind("<ButtonRelease-1>", self.on_delete_button)
+        self.send_button.bind("<ButtonRelease-1>", self.send_action)
+        self.open_config_button.bind("<ButtonRelease-1>", self.open_config)
+        self.go_button.bind("<ButtonRelease-1>", self.perform_action)
+        self.save_button.bind("<ButtonRelease-1>", self.save_action)
+        self.folder_button.bind("<ButtonRelease-1>", self.choose_folder)
         
         
         self.save_button.config(state=tk.DISABLED)
@@ -379,7 +379,7 @@ class MergerGuiApp:
         self.go_button.config(state=tk.NORMAL)
         self.update_filenames()
         self.process_files(self.file1.get(0, 'end'), self.file2.get(0, 'end'), self.file3.get(0, 'end'))
-
+        return"break"
     def update_filenames(self):
         heating_file = ','.join(self.file1.get(0, 'end'))
         valve_file = ','.join(self.file2.get(0, 'end'))
