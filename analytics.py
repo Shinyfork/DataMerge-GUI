@@ -776,6 +776,8 @@ def import_logfiles(csv_files, rows, headers):
         rows.extend(file_rows[0:len(file_rows)])
         headers.append(file_header)
         log_infos.append(log_info)
+
+                
     return log_infos
 
     
@@ -959,7 +961,29 @@ def main_analytics(config_file, data_dir):
     value_rows = []
     value_headers = []
     value_infos = import_logfiles(value_csv_files, value_rows, value_headers);
+    if "time elapsed" not in value_headers[0]:
+        print("WARNING: No time elapsed column found in [VALUE] log file. Appending fake column. May take a while.")
+        value_headers[0].append("time elapsed")
+        i = 0
+        for row in value_rows:
+            row.append(str(i+1))
+            i = i+1
+
+    if "box_humidity" not in value_headers[0]:
+        print("WARNING: No box_humidity column found in [VALUE] log file. Appending fake column. May take a while.")
+        value_headers[0].append("box_humidity")
+        i = 0
+        for row in value_rows:
+            row.append(0)
+            i = i+1
     
+    if "box_temperature" not in value_headers[0]:
+        print("WARNING: No box_temperature column found in [VALUE] log file. Appending fake column. May take a while.")
+        value_headers[0].append("box_temperature")
+        i = 0
+        for row in value_rows:
+            row.append(0)
+            i = i+1        
 
     print("--- Ensuring chronologic order ---")    
     rows_ordered = sort(config, value_headers[0], value_rows)

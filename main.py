@@ -16,6 +16,13 @@ import ini
 PROJECT_PATH = pathlib.Path(__file__).parent
 PROJECT_UI = PROJECT_PATH / "merger_gui.ui"
 
+start_time_str = {"%d.%m.%Y %H:%M:%S" : "01.01.2000 00:00:01", 
+                    "%Y-%m-%d %H:%M:%S" : "2000-01-01 00:00:01",
+                    "%Y/%m/%d %H:%M:%S %r" : "2000/01/01 00:00 AM",}
+end_time_str = {"%d.%m.%Y %H:%M:%S" : "01.01.2100 00:00:00", 
+                    "%Y-%m-%d %H:%M:%S" : "2100-01-01 00:00:00",
+                    "%Y/%m/%d %H:%M:%S %r" : "2100/01/01 00:00 AM",}
+
 
 class EntryPopup(tk.Entry):
 
@@ -63,12 +70,16 @@ class MergerGuiApp:
         self.delete_button = builder.get_object("delete_button")
         self.send_button = builder.get_object("send_button")
         self.open_config_button = builder.get_object("open_config_button")
-        self.go_button = builder.get_object("create_config_button")
+        
         self.save_button = builder.get_object("merge_button")
         self.list_files = builder.get_object("listbox_choose")
         self.list_files.config(selectmode=tk.MULTIPLE)
         
-        
+        self.combobox = builder.get_object("dateformat")
+        for key, value in start_time_str.items():
+            self.combobox.insert(tk.END, key)
+        self.combobox.current(0)
+        self.combobox.bind("<<ComboboxSelected>>", self.combobox_clicked)
         
         self.file1 = builder.get_object("listbox_1")
         self.file1.config(selectmode=tk.MULTIPLE)
@@ -100,13 +111,13 @@ class MergerGuiApp:
         self.delete_button.bind("<ButtonRelease-1>", self.on_delete_button)
         self.send_button.bind("<ButtonRelease-1>", self.send_action)
         self.open_config_button.bind("<ButtonRelease-1>", self.open_config)
-        self.go_button.bind("<ButtonRelease-1>", self.perform_action)
-        self.save_button.bind("<ButtonRelease-1>", self.save_action)
+        
+        self.save_button.bind("<ButtonRelease-1>", self.merge)
         self.folder_button.bind("<ButtonRelease-1>", self.choose_folder)
         
         
         self.save_button.config(state=tk.DISABLED)
-        self.go_button.config(state=tk.DISABLED)
+        
         
         
         self.folder_callback = None
@@ -166,7 +177,9 @@ class MergerGuiApp:
 
 
     def choose_folder(self, dummy=None):
+            
             #clear file 1,2,3
+            
             self.file1.delete(0, tk.END)
             self.file2.delete(0, tk.END)
             self.file3.delete(0, tk.END)
@@ -175,6 +188,8 @@ class MergerGuiApp:
                 self.tview.delete(i)
         
             self.folder_path = filedialog.askdirectory()
+            if self.folder_path is None or self.folder_path == '':
+                return
             if self.folder_path:
                 self.list_files.delete(0, tk.END)
                 files = os.listdir(self.folder_path)
@@ -183,10 +198,14 @@ class MergerGuiApp:
                 self.handle_folder_selection(self.folder_path, self.list_files)
             self.config = None
             print(os.getcwd())
+            try:
+                os.chdir(os.path.dirname(__file__))
+            except:
+                pass
             config_fp = open("config_template.ini", "r")
             config_str = config_fp.read()
             self.config = ini.parse(config_str, on_empty_key="")
-            os.chdir(os.path.dirname(__file__))
+            
 
             
             
@@ -202,7 +221,8 @@ class MergerGuiApp:
                         self.tview.insert(section, 'end', section + "_" + option, text=option, values=(value,))
                     except Exception as e:
                         print(e)
-
+            self.update_format()
+            
             block_list = []
             for child in self.tview.get_children():
                 if self.tview.parent(child) in block_list:
@@ -254,31 +274,8 @@ class MergerGuiApp:
         
         
             
-    def perform_action(self, dummy=None):
-        if self.go_button['state'] == 'disabled':
-            print("Button is disabled")
-        else:
-            #self.config["source"]["heating_csv"] = heating_file
-            #self.config["source"]["valve_csv"] = valve_file
-            #self.config["source"]["value_csv"] = value_file
-            self.save_button.config(state=tk.NORMAL)
-
-
-            for child in self.tview.get_children():
-                if self.tview.parent(child) == '':
-                    section = self.tview.item(child)['text']
-                    for child2 in self.tview.get_children(child):
-                        option = self.tview.item(child2)['text']
-                        if len(self.tview.item(child2)['values']) > 0:
-                            value = str(self.tview.item(child2)['values'][0])
-                            option.replace(section + "_", "", 1)
-                            self.config[section][option] = str(value)        # write treeview to config file
-            self.config_filename = filedialog.asksaveasfilename(initialfile = "config.ini",initialdir = self.folder_path,title = "Select file",filetypes = (("ini files","*.ini"),("all files","*.*")))
-            with open(self.config_filename, 'w') as new_config_fp:
-                    new_config_str = ini.stringify(self.config)
-                    new_config_fp.write(new_config_str)
-
-
+    
+        
         
 
 
@@ -286,19 +283,24 @@ class MergerGuiApp:
     def open_config(self, dummy=None):
         self.save_button.config(state=tk.NORMAL)
         self.config_filename = filedialog.askopenfilename()
+        if self.config_filename is None or self.config_filename == '':
+            return
         self.folder_path = os.path.dirname(self.config_filename)
+        
+        try:
+            os.chdir(os.path.dirname(__file__))
+        except:
+            pass
         
         config_fp = open("config_template.ini", "r")
         config_str = config_fp.read()
 
         self.config = ini.parse(config_str,on_empty_key="")
         
-
-        sections = self.config.sections()
-        for section in sections:
+        for section in self.config:
             self.tview.insert('', 'end', section, text=section)
-            options = self.config.options(section)
-            for option in options:
+
+            for option in self.config[section]:
                 try:
                     self.tview.insert(section, 'end', section + "_" + option, text=option, values=(self.config[section].get(option)))
                 except Exception as e:
@@ -318,44 +320,90 @@ class MergerGuiApp:
         
 
 
-    def save_action(self, dummy=None):     
-        if self.save_button['state'] == 'disabled':
-            print("Button is disabled")
-        else:
-            os.chdir(self.folder_path)
-            analytics.main_analytics(self.config_filename, self.folder_path)
-            print("--- Merging done \u2713 ---")
-            self.open_pdf()
-            # open pdf_frame
+    def merge(self, dummy=None):     
+        
+            
+
+
+            for child in self.tview.get_children():
+                if self.tview.parent(child) == '':
+                    section = self.tview.item(child)['text']
+                    for child2 in self.tview.get_children(child):
+                        option = self.tview.item(child2)['text']
+                        if len(self.tview.item(child2)['values']) > 0:
+                            value = str(self.tview.item(child2)['values'][0])
+                            option.replace(section + "_", "", 1)
+                            self.config[section][option] = str(value)        # write treeview to config file
+            self.config_filename = filedialog.asksaveasfilename(initialfile = "config.ini",initialdir = self.folder_path,title = "Select file",filetypes = (("ini files","*.ini"),("all files","*.*")))
+            if self.config_filename is None or self.config_filename == '':
+                return
+            with open(self.config_filename, 'w') as new_config_fp:
+                    new_config_str = ini.stringify(self.config)
+                    new_config_fp.write(new_config_str)
+
+
+        
+        
+        
+        
+            if self.save_button['state'] == 'disabled':
+                print("Button is disabled")
+            else:
+                os.chdir(self.folder_path)
+                analytics.main_analytics(self.config_filename,self.folder_path)
+                print("--- Merging done \u2713 ---")
+                self.open_pdf()
+                # open pdf_frame
+        
        
-       
+        
+    def combobox_clicked(self, dummy=None):
+        self.update_format()
+        return "break"  
         
         
-        
+    def update_format(self, dummy=None):
+        combobox = self.combobox.get()
         
 
+        
+
+            
+        if combobox is not None and combobox != "":
+            self.tview.item('formats_date', values=(combobox,))
+            self.tview.item('resampling_tstart', values=(start_time_str[combobox],))
+            self.tview.item('resampling_tend', values=(end_time_str[combobox],))
+        elif combobox == "":
+            pass
 
 
     def send_action(self, dummy=None):
         
-
+        self.save_button.config(state=tk.NORMAL)
         selected_files = self.list_files.curselection()
 
         if len(selected_files) == 0:
             tk.messagebox.showerror("Error", "Please select at least one _value file.")
             return
         file_paths = [self.list_files.get(index) for index in selected_files]
+        
 
         heating_files = []
         valve_files = []
         value_files = []
-
+       
+        
+        
+        
+        
         for file_path in file_paths:
             if file_path.lower().endswith("_heating.csv"):
                 heating_files.append(file_path)
             elif file_path.lower().endswith("_valve.csv"):
                 valve_files.append(file_path)
             elif file_path.lower().endswith("_values.csv"):
+                value_files.append(file_path)
+            elif file_path.lower().endswith(".csv"):
                 value_files.append(file_path)
             else:
                 tk.messagebox.showerror("Error", f"Unsupported file: {file_path}")
@@ -376,19 +424,24 @@ class MergerGuiApp:
         for value_file in value_files:
             #self.file3.delete(0, tk.END)
             self.file3.insert(0, value_file)
-        self.go_button.config(state=tk.NORMAL)
+        
         self.update_filenames()
         self.process_files(self.file1.get(0, 'end'), self.file2.get(0, 'end'), self.file3.get(0, 'end'))
         return"break"
     def update_filenames(self):
+        
+        
+        
         heating_file = ','.join(self.file1.get(0, 'end'))
         valve_file = ','.join(self.file2.get(0, 'end'))
         value_file = ','.join(self.file3.get(0, 'end'))
         self.tview.item('source_heating_csv', values=())
         self.tview.item('source_valve_csv', values=())
         self.tview.item('source_value_csv', values=())
+        self.tview.item('plot_plot_filename', values=(self.file3.get(0, 'end')[0].replace("_values.csv", "")))
 
         # insert files into treeview
+        
         if value_file:
             self.tview.item('source_value_csv', values=(value_file))
         if heating_file:
