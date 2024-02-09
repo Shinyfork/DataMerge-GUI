@@ -7,6 +7,9 @@ from tkinter import messagebox
 import os
 import pandas as pd
 import analytics
+from pandastable import Table, TableModel
+
+
 import fitz
 from PIL import Image, ImageTk  
 from tkPDFViewer import tkPDFViewer as pdf
@@ -98,8 +101,9 @@ class MergerGuiApp:
         self.tview.heading('#1', text='Value')
         self.tview.bind("<Double-1>", self.onDoubleClick)
         
-        
-        
+        self.file1.bind("<<ListboxSelect>>", self.on_listbox_select)
+        self.file2.bind("<<ListboxSelect>>", self.on_listbox_select)
+        self.file3.bind("<<ListboxSelect>>", self.on_listbox_select)
         
         
         self.canvas = builder.get_object("canvas")
@@ -107,7 +111,10 @@ class MergerGuiApp:
         
         
         self.folder_button = builder.get_object("folder_button")
-        
+
+        self.data_preview_frame = builder.get_object("data_preview_frame")
+        self.data_preview_table = Table(self.data_preview_frame, showtoolbar=False, showstatusbar=True)
+        self.data_preview_table.show()
         self.delete_button.bind("<ButtonRelease-1>", self.on_delete_button)
         self.send_button.bind("<ButtonRelease-1>", self.send_action)
         self.open_config_button.bind("<ButtonRelease-1>", self.open_config)
@@ -121,6 +128,28 @@ class MergerGuiApp:
         
         
         self.folder_callback = None
+    
+    def on_listbox_select(self, event):
+        selected_item_1 = self.file1.curselection()
+        selected_item_2 = self.file2.curselection()
+        selected_item_3 = self.file3.curselection()
+        if event.widget == self.file1:
+            file_path = self.file1.get(selected_item_1[0])
+            
+        elif selected_item_2:
+            file_path = self.file2.get(selected_item_2[0])
+            
+        elif selected_item_3:
+            file_path = self.file3.get(selected_item_3[0])
+    
+        try:            
+            self.data_preview_table.importCSV(self.folder_path + "/" + file_path, sep=";")
+            return 
+        except Exception as e:
+            print(f"Error reading CSV file: {e}")
+            return None
+    
+
     
     
     def onDoubleClick(self, event):
@@ -174,7 +203,9 @@ class MergerGuiApp:
         for file in files:
             listbox.insert(tk.END, file)
             
-
+    
+    
+        
 
     def choose_folder(self, dummy=None):
             
